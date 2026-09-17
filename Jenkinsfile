@@ -3,17 +3,23 @@ pipeline {
     agent any
 
     environment {
-        NAMESPACE = 'zabbix'
-        K8S_CONTEXT = 'docker-desktop'
 
-        ZABBIX_SERVER_IMAGE = 'zabbix/zabbix-server-pgsql:7.0-ubuntu-latest'
-        ZABBIX_WEB_IMAGE    = 'zabbix/zabbix-web-nginx-pgsql:7.0-ubuntu-latest'
-        POSTGRES_IMAGE      = 'postgres:16-alpine'
+        // Docker Hub
+        DOCKER_REGISTRY = 'docker.io'
+        DOCKER_REPO = 'dockercctns/zabbix'
+	DOCKER_CREDS_ID = 'dockerhub-creds'
+        IMAGE_TAG = "${BUILD_NUMBER}"
+
+        // Kubernetes
+        K8S_CONTEXT = 'docker-desktop'
+        K8S_NAMESPACE = 'zabbix'
+        KUBE_CONFIG_ID = 'k8s-kubeconfig'
+	TARGET_NS = "${env.BRANCH_NAME=='main' ? 'production'}"
     }
 
     stages {
 
-        stage('Checkout') {
+        stage('Checkout SCM') {
             steps {
                 echo 'Checking out source code from GitHub...'
 
@@ -21,10 +27,10 @@ pipeline {
             }
         }
 
-        stage('Verify Files') {
+        stage('Verify Source') {
             steps {
                 bat '''
-                    echo ===== Repository Files =====
+                    echo ===== Repository =====
                     dir
 
                     echo ===== Kubernetes Files =====
@@ -33,22 +39,72 @@ pipeline {
             }
         }
 
-        stage('Kubernetes Context') {
+        stage('Docker Build') {
             steps {
                 bat '''
-                    echo ===== Kubernetes Context =====
+                    echo ===== Building Docker Image =====
 
-                    kubectl config get-contexts
+                    docker build ^
+                        -t %DOCKER_REPO%:%IMAGE_TAG% ^
+                        -t %DOCKER_REPO%:latest ^
+                        -f docker/Dockerfile .
+                '''
+            }
+        }
+
+        stage('Docker Login') {
+            steps {
+
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub-creds',
+                        usernameVariable: 'dockercctns',
+                        passwordVariable: 'docker@123'
+                    )
+                ]) {
+
+                    bat '''
+                        echo ===== Docker Hub Login =====
+
+                        docker login ^
+                            -u %DOCKER_USERNAME% ^
+                            -p %DOCKER_PASSWORD%
+                    '''
+                }
+            }
+        }
+
+        stage('Push Image to Docker Hub') {
+            steps {
+
+                bat '''
+                    echo ===== Pushing Image =====
+
+                    docker push %DOCKER_REPO%:%IMAGE_TAG%
+
+                    docker push %DOCKER_REPO%:latest
+                '''
+            }
+        }
+
+        stage('Kubernetes Context') {
+            steps {
+
+                bat '''
+                    echo ===== Kubernetes Context =====
 
                     kubectl config use-context %K8S_CONTEXT%
 
                     kubectl cluster-info
+
+                    kubectl get nodes
                 '''
             }
         }
 
         stage('Create Namespace') {
             steps {
+
                 bat '''
                     kubectl apply -f k8s/namespace.yaml
                 '''
@@ -57,27 +113,27 @@ pipeline {
 
         stage('Deploy PostgreSQL') {
             steps {
-                bat '''
-                    kubectl apply -f k8s/postgres.yaml -n %NAMESPACE%
 
-                    echo Waiting for PostgreSQL...
+                bat '''
+                    kubectl apply -f k8s/postgres.yaml ^
+                        -n %K8S_NAMESPACE%
 
                     kubectl rollout status deployment/zabbix-postgres ^
-                        -n %NAMESPACE% ^
-                        --timeout=180s
+                        -n %K8S_NAMESPACE% ^
+                        --timeout=300s
                 '''
             }
         }
 
         stage('Deploy Zabbix Server') {
             steps {
-                bat '''
-                    kubectl apply -f k8s/zabbix-server.yaml -n %NAMESPACE%
 
-                    echo Waiting for Zabbix Server...
+                bat '''
+                    kubectl apply -f k8s/zabbix-server.yaml ^
+                        -n %K8S_NAMESPACE%
 
                     kubectl rollout status deployment/zabbix-server ^
-                        -n %NAMESPACE% ^
+                        -n %K8S_NAMESPACE% ^
                         --timeout=300s
                 '''
             }
@@ -85,13 +141,13 @@ pipeline {
 
         stage('Deploy Zabbix Web') {
             steps {
-                bat '''
-                    kubectl apply -f k8s/zabbix-web.yaml -n %NAMESPACE%
 
-                    echo Waiting for Zabbix Web...
+                bat '''
+                    kubectl apply -f k8s/zabbix-web.yaml ^
+                        -n %K8S_NAMESPACE%
 
                     kubectl rollout status deployment/zabbix-web ^
-                        -n %NAMESPACE% ^
+                        -n %K8S_NAMESPACE% ^
                         --timeout=300s
                 '''
             }
@@ -99,32 +155,39 @@ pipeline {
 
         stage('Apply Services') {
             steps {
+
                 bat '''
-                    kubectl apply -f k8s/zabbix-service.yaml -n %NAMESPACE%
+                    kubectl apply -f k8s/zabbix-service.yaml ^
+                        -n %K8S_NAMESPACE%
                 '''
             }
         }
 
         stage('Verify Deployment') {
             steps {
+
                 bat '''
                     echo ==============================
-                    echo Zabbix Pods
+                    echo PODS
                     echo ==============================
 
-                    kubectl get pods -n %NAMESPACE% -o wide
+                    kubectl get pods ^
+                        -n %K8S_NAMESPACE% ^
+                        -o wide
 
                     echo ==============================
-                    echo Zabbix Services
+                    echo SERVICES
                     echo ==============================
 
-                    kubectl get svc -n %NAMESPACE%
+                    kubectl get svc ^
+                        -n %K8S_NAMESPACE%
 
                     echo ==============================
-                    echo Deployments
+                    echo DEPLOYMENTS
                     echo ==============================
 
-                    kubectl get deployments -n %NAMESPACE%
+                    kubectl get deployments ^
+                        -n %K8S_NAMESPACE%
                 '''
             }
         }
@@ -133,19 +196,25 @@ pipeline {
     post {
 
         success {
-            echo '======================================'
+            echo '=========================================='
             echo 'Zabbix deployment completed successfully'
-            echo '======================================'
+            echo '=========================================='
         }
 
         failure {
-            echo '======================================'
+            echo '=========================================='
             echo 'Zabbix deployment FAILED'
-            echo '======================================'
+            echo '=========================================='
 
             bat '''
-                kubectl get pods -n %NAMESPACE%
-                kubectl get events -n %NAMESPACE% --sort-by=.lastTimestamp
+                kubectl get pods -n %K8S_NAMESPACE%
+                kubectl get events -n %K8S_NAMESPACE%
+            '''
+        }
+
+        always {
+            bat '''
+                docker logout
             '''
         }
     }
