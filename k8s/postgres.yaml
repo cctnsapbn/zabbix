@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zabbix-postgres
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: zabbix-postgres
+
+  template:
+    metadata:
+      labels:
+        app: zabbix-postgres
+
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+
+          ports:
+            - containerPort: 5432
+
+          env:
+            - name: POSTGRES_USER
+              value: zabbix
+
+            - name: POSTGRES_PASSWORD
+              value: "ZabbixDBPassword"
+
+            - name: POSTGRES_DB
+              value: zabbix
+
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+
+      volumes:
+        - name: postgres-data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zabbix-postgres
+spec:
+  selector:
+    app: zabbix-postgres
+
+  ports:
+    - port: 5432
+      targetPort: 5432

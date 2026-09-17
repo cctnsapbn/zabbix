@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zabbix-web
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: zabbix-web
+
+  template:
+    metadata:
+      labels:
+        app: zabbix-web
+
+    spec:
+      containers:
+
+        - name: zabbix-web
+
+          image: zabbix/zabbix-web-nginx-pgsql:7.0-ubuntu-latest
+
+          ports:
+            - containerPort: 8080
+
+          env:
+
+            - name: DB_SERVER_HOST
+              value: zabbix-postgres
+
+            - name: POSTGRES_USER
+              value: zabbix
+
+            - name: POSTGRES_PASSWORD
+              value: "ZabbixDBPassword"
+
+            - name: POSTGRES_DB
+              value: zabbix
+
+            - name: ZBX_SERVER_HOST
+              value: zabbix-server
+
+            - name: PHP_TZ
+              value: Asia/Kolkata
+
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+
+            limits:
+              cpu: "1"
+              memory: "1Gi"

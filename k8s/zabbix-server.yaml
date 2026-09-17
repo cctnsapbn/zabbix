@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zabbix-server
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: zabbix-server
+
+  template:
+    metadata:
+      labels:
+        app: zabbix-server
+
+    spec:
+      containers:
+
+        - name: zabbix-server
+
+          image: zabbix/zabbix-server-pgsql:7.0-ubuntu-latest
+
+          ports:
+            - containerPort: 10051
+
+          env:
+            - name: DB_SERVER_HOST
+              value: zabbix-postgres
+
+            - name: POSTGRES_USER
+              value: zabbix
+
+            - name: POSTGRES_PASSWORD
+              value: "ZabbixDBPassword"
+
+            - name: POSTGRES_DB
+              value: zabbix
+
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+
+            limits:
+              cpu: "2"
+              memory: "2Gi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zabbix-server
+spec:
+  selector:
+    app: zabbix-server
+
+  ports:
+    - name: zabbix
+      port: 10051
+      targetPort: 10051
