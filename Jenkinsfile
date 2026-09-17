@@ -44,7 +44,7 @@ pipeline {
                 sh '''
                     echo ===== Building Docker Image =====
 
-                    docker build ^
+                    docker build \
                         -t %DOCKER_REPO%:%IMAGE_TAG% \
                         -t %DOCKER_REPO%:latest \
                         -f docker/Dockerfile .
