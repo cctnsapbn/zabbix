@@ -45,8 +45,8 @@ pipeline {
                     echo ===== Building Docker Image =====
 
                     docker build ^
-                        -t %DOCKER_REPO%:%IMAGE_TAG% ^
-                        -t %DOCKER_REPO%:latest ^
+                        -t %DOCKER_REPO%:%IMAGE_TAG% \
+                        -t %DOCKER_REPO%:latest \
                         -f docker/Dockerfile .
                 '''
             }
@@ -66,8 +66,8 @@ pipeline {
                     sh '''
                         echo ===== Docker Hub Login =====
 
-                        docker login ^
-                            -u %DOCKER_USERNAME% ^
+                        docker login \
+                            -u %DOCKER_USERNAME% \
                             -p %DOCKER_PASSWORD%
                     '''
                 }
@@ -115,11 +115,11 @@ pipeline {
             steps {
 
                 sh '''
-                    kubectl apply -f k8s/postgres.yaml ^
+                    kubectl apply -f k8s/postgres.yaml \
                         -n %K8S_NAMESPACE%
 
-                    kubectl rollout status deployment/zabbix-postgres ^
-                        -n %K8S_NAMESPACE% ^
+                    kubectl rollout status deployment/zabbix-postgres \
+                        -n %K8S_NAMESPACE% \
                         --timeout=300s
                 '''
             }
@@ -129,11 +129,11 @@ pipeline {
             steps {
 
                 sh '''
-                    kubectl apply -f k8s/zabbix-server.yaml ^
+                    kubectl apply -f k8s/zabbix-server.yaml \
                         -n %K8S_NAMESPACE%
 
-                    kubectl rollout status deployment/zabbix-server ^
-                        -n %K8S_NAMESPACE% ^
+                    kubectl rollout status deployment/zabbix-server \
+                        -n %K8S_NAMESPACE% \
                         --timeout=300s
                 '''
             }
@@ -143,11 +143,11 @@ pipeline {
             steps {
 
                 sh '''
-                    kubectl apply -f k8s/zabbix-web.yaml ^
+                    kubectl apply -f k8s/zabbix-web.yaml \
                         -n %K8S_NAMESPACE%
 
-                    kubectl rollout status deployment/zabbix-web ^
-                        -n %K8S_NAMESPACE% ^
+                    kubectl rollout status deployment/zabbix-web \
+                        -n %K8S_NAMESPACE% \
                         --timeout=300s
                 '''
             }
@@ -157,7 +157,7 @@ pipeline {
             steps {
 
                 sh '''
-                    kubectl apply -f k8s/zabbix-service.yaml ^
+                    kubectl apply -f k8s/zabbix-service.yaml \
                         -n %K8S_NAMESPACE%
                 '''
             }
@@ -171,22 +171,22 @@ pipeline {
                     echo PODS
                     echo ==============================
 
-                    kubectl get pods ^
-                        -n %K8S_NAMESPACE% ^
+                    kubectl get pods \
+                        -n %K8S_NAMESPACE% \
                         -o wide
 
                     echo ==============================
                     echo SERVICES
                     echo ==============================
 
-                    kubectl get svc ^
+                    kubectl get svc \
                         -n %K8S_NAMESPACE%
 
                     echo ==============================
                     echo DEPLOYMENTS
                     echo ==============================
 
-                    kubectl get deployments ^
+                    kubectl get deployments \
                         -n %K8S_NAMESPACE%
                 '''
             }
