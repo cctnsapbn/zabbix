@@ -14,7 +14,7 @@ pipeline {
         K8S_CONTEXT = 'docker-desktop'
         K8S_NAMESPACE = 'zabbix'
         KUBE_CONFIG_ID = 'k8s-kubeconfig'
-	TARGET_NS = "${env.BRANCH_NAME=='main' ? 'production'}"
+	// TARGET_NS = "${env.BRANCH_NAME=='main' ? 'production'}"
     }
 
     stages {
