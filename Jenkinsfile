@@ -45,8 +45,8 @@ pipeline {
                     echo ===== Building Docker Image =====
 
                     docker build \
-                        -t %DOCKER_REPO%:%IMAGE_TAG% \
-                        -t %DOCKER_REPO%:latest \
+                        -t ${DOCKER_REPO}:${IMAGE_TAG} \
+                        -t ${DOCKER_REPO}:latest \
                         -f docker/Dockerfile .
                 '''
             }
@@ -67,8 +67,8 @@ pipeline {
                         echo ===== Docker Hub Login =====
 
                         docker login \
-                            -u %DOCKER_USERNAME% \
-                            -p %DOCKER_PASSWORD%
+                            -u ${DOCKER_USERNAME} \
+                            -p ${DOCKER_PASSWORD}
                     '''
                 }
             }
@@ -80,9 +80,9 @@ pipeline {
                 sh '''
                     echo ===== Pushing Image =====
 
-                    docker push %DOCKER_REPO%:%IMAGE_TAG%
+                    docker push ${DOCKER_REPO}:${IMAGE_TAG}
 
-                    docker push %DOCKER_REPO%:latest
+                    docker push ${DOCKER_REPO}:latest
                 '''
             }
         }
@@ -93,7 +93,7 @@ pipeline {
                 sh '''
                     echo ===== Kubernetes Context =====
 
-                    kubectl config use-context %K8S_CONTEXT%
+                    kubectl config use-context ${K8S_CONTEXT}
 
                     kubectl cluster-info
 
@@ -116,10 +116,10 @@ pipeline {
 
                 sh '''
                     kubectl apply -f k8s/postgres.yaml \
-                        -n %K8S_NAMESPACE%
+                        -n ${K8S_NAMESPACE}
 
                     kubectl rollout status deployment/zabbix-postgres \
-                        -n %K8S_NAMESPACE% \
+                        -n ${K8S_NAMESPACE} \
                         --timeout=300s
                 '''
             }
@@ -130,10 +130,10 @@ pipeline {
 
                 sh '''
                     kubectl apply -f k8s/zabbix-server.yaml \
-                        -n %K8S_NAMESPACE%
+                        -n ${K8S_NAMESPACE}
 
                     kubectl rollout status deployment/zabbix-server \
-                        -n %K8S_NAMESPACE% \
+                        -n ${K8S_NAMESPACE} \
                         --timeout=300s
                 '''
             }
@@ -144,10 +144,10 @@ pipeline {
 
                 sh '''
                     kubectl apply -f k8s/zabbix-web.yaml \
-                        -n %K8S_NAMESPACE%
+                        -n ${K8S_NAMESPACE}
 
                     kubectl rollout status deployment/zabbix-web \
-                        -n %K8S_NAMESPACE% \
+                        -n ${K8S_NAMESPACE} \
                         --timeout=300s
                 '''
             }
@@ -158,7 +158,7 @@ pipeline {
 
                 sh '''
                     kubectl apply -f k8s/zabbix-service.yaml \
-                        -n %K8S_NAMESPACE%
+                        -n ${K8S_NAMESPACE}
                 '''
             }
         }
@@ -172,7 +172,7 @@ pipeline {
                     echo ==============================
 
                     kubectl get pods \
-                        -n %K8S_NAMESPACE% \
+                        -n ${K8S_NAMESPACE} \
                         -o wide
 
                     echo ==============================
@@ -180,14 +180,14 @@ pipeline {
                     echo ==============================
 
                     kubectl get svc \
-                        -n %K8S_NAMESPACE%
+                        -n ${K8S_NAMESPACE}
 
                     echo ==============================
                     echo DEPLOYMENTS
                     echo ==============================
 
                     kubectl get deployments \
-                        -n %K8S_NAMESPACE%
+                        -n ${K8S_NAMESPACE}
                 '''
             }
         }
@@ -207,8 +207,8 @@ pipeline {
             echo '=========================================='
 
             sh '''
-                kubectl get pods -n %K8S_NAMESPACE%
-                kubectl get events -n %K8S_NAMESPACE%
+                kubectl get pods -n ${K8S_NAMESPACE}
+                kubectl get events -n ${K8S_NAMESPACE}
             '''
         }
 
